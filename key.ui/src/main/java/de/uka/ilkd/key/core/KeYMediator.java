@@ -316,6 +316,10 @@ public class KeYMediator {
 
     private void setProofHelper(Proof newProof) {
         Proof oldProof = getSelectedProof();
+        if (oldProof == newProof) {
+            // nothing has changed
+            return;
+        }
         if (oldProof != null) {
             oldProof.removeProofTreeListener(proofTreeListener);
             oldProof.removeRuleAppListener(proofListener);
@@ -625,9 +629,6 @@ public class KeYMediator {
                                                                                   // required?
             }
             ui.notifyAutomodeStopped();
-            if (getSelectedProof() != null) {
-                keySelectionModel.fireSelectedProofChanged();
-            }
         };
         ThreadUtilities.invokeOnEventQueue(interfaceSignaller);
     }
