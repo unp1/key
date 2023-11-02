@@ -629,9 +629,6 @@ public class KeYMediator {
                                                                                   // required?
             }
             ui.notifyAutomodeStopped();
-            if (getSelectedProof() != null) {
-                keySelectionModel.fireSelectedProofChanged();
-            }
         };
         ThreadUtilities.invokeOnEventQueue(interfaceSignaller);
     }
