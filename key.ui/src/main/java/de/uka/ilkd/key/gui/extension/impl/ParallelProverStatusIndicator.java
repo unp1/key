@@ -8,7 +8,6 @@ import java.awt.FontMetrics;
 import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import javax.swing.*;
@@ -105,7 +104,7 @@ public class ParallelProverStatusIndicator
 
         // Offer a small, sensible set of worker counts capped at the available processors.
         TreeSet<Integer> counts = new TreeSet<>(List.of(2, 4, 8, cores()));
-        for (Integer n : new ArrayList<>(counts)) {
+        for (Integer n : counts) {
             if (n < 2 || n > cores()) {
                 continue;
             }

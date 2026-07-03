@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * <b>What is (and is not) asserted.</b> The gate asserts <b>soundness</b>: the parallel run reaches
  * the same closed/open <em>status</em> as expected (and as single-threaded). It does <em>not</em>
  * require an identical proof tree. Real proofs legitimately diverge under parallel search because
- * KeY's strategy cost is order/age-dependent (rule-app age, and fresh names are worker-tagged), so
+ * KeY's strategy cost is order/age-dependent (rule-app age), so
  * processing goals in a different order &mdash; which the scheduler does even with a single worker,
  * and which thread interleaving does non-deterministically with several &mdash; yields a different
  * but equally valid proof. (Measured on {@code sum0.key}: single 297 nodes, parallel 295&ndash;296,

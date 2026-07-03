@@ -31,7 +31,6 @@ import org.key_project.prover.proof.SessionCaches;
 import org.key_project.prover.rules.Taclet;
 import org.key_project.prover.rules.instantiation.caches.AssumesFormulaInstantiationCache;
 import org.key_project.prover.sequent.PosInOccurrence;
-import org.key_project.prover.strategy.costbased.RuleAppCost;
 import org.key_project.util.ConcurrentLruCache;
 import org.key_project.util.collection.ImmutableSet;
 import org.key_project.util.collection.Pair;
@@ -44,7 +43,7 @@ import org.key_project.util.collection.Pair;
  * <p>
  * This is a redesign of the old static caches which were implemented via final static {@link Map}s
  * like
- * {@code private static final Map<CacheKey, TermTacletAppIndex> termTacletAppIndexCache = new LRUCache<CacheKey, TermTacletAppIndex> ( MAX_TERM_TACLET_APP_INDEX_ENTRIES );}.
+ * {@code private static final Map<CacheKey, TermTacletAppIndex> termTacletAppIndexCache = new ConcurrentLruCache<>(MAX_TERM_TACLET_APP_INDEX_ENTRIES);}.
  * </p>
  * <p>
  * The old idea that memory is reused and shared between multiple {@link Proof}s by static variables
@@ -106,8 +105,6 @@ public class ServiceCaches implements SessionCaches {
     private final Map<JTerm, TermInfo> betaCandidates =
         new ConcurrentLruCache<>(1000);
 
-    private final Map<PosInOccurrence, RuleAppCost> ifThenElseMalusCache =
-        new ConcurrentLruCache<>(1000);
 
     /**
      * the introduction time cache used by {@code AbstractMonomialSmallerThanFeature} for Skolem
@@ -220,10 +217,6 @@ public class ServiceCaches implements SessionCaches {
 
     public final Map<JTerm, TermInfo> getBetaCandidates() {
         return betaCandidates;
-    }
-
-    public final Map<PosInOccurrence, RuleAppCost> getIfThenElseMalusCache() {
-        return ifThenElseMalusCache;
     }
 
     /**

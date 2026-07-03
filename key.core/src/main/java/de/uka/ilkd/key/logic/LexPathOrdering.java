@@ -20,7 +20,7 @@ import org.key_project.logic.op.Function;
 import org.key_project.logic.op.Operator;
 import org.key_project.logic.op.QuantifiableVariable;
 import org.key_project.logic.sort.Sort;
-import org.key_project.util.ConcurrentLruCache;
+import org.key_project.util.StripedLruCache;
 import org.key_project.util.collection.ImmutableArray;
 
 /**
@@ -101,13 +101,19 @@ public class LexPathOrdering implements TermOrdering {
      * Comparison-result cache, a thread-safe bounded LRU. A {@link LexPathOrdering} lives in a
      * per-proof strategy cost feature ({@code SmallerThanFeature}) shared across all goals, and the
      * parallel prover evaluates rule-application cost concurrently, so this cache is read and
-     * written by several workers at once. A plain {@code HashMap}/{@code LRUCache} would corrupt
-     * under that (the latter mutates even on {@code get}); {@link ConcurrentLruCache} keeps the LRU
-     * bound while being thread-safe. Size tunable via {@code -Dkey.lexpath.cachesize}.
+     * written by several workers at once. A plain {@code HashMap} or {@code LRUCache} would corrupt
+     * under that (the latter mutates even on {@code get}). The cached {@link CompRes} is a pure
+     * function of the key (the ordering of two fixed terms is fully determined by them), so
+     * eviction
+     * order never changes a result -- only the hit rate. We therefore use the lower-contention
+     * {@link StripedLruCache} (per-segment locking) rather than the single-lock
+     * {@code ConcurrentLruCache}. Size tunable via {@code -Dkey.lexpath.cachesize}.
      */
     private static final int CACHE_SIZE = Integer.getInteger("key.lexpath.cachesize", 10000);
-    private final ConcurrentLruCache<CacheKey, CompRes> cache =
-        new ConcurrentLruCache<>(CACHE_SIZE);
+    /** Lock stripes for the comparison cache; it is read/written by every worker, so split it. */
+    private static final int CACHE_STRIPES = 16;
+    private final StripedLruCache<CacheKey, CompRes> cache =
+        new StripedLruCache<>(CACHE_SIZE, CACHE_STRIPES);
 
 
     private CompRes compareHelp(Term p_a, Term p_b) {
