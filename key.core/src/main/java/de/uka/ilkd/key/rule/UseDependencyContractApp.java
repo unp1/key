@@ -60,12 +60,29 @@ public class UseDependencyContractApp<T extends UseDependencyContractRule>
                 .getSteps(this.getHeapContext(), this.posInOccurrence(), seq, services);
         PosInOccurrence l_step =
             UseDependencyContractRule.findStepInIfInsts(steps, this);
-        assert l_step != null;/*
-                               * : "The strategy failed to properly " +
-                               * "instantiate the base heap!\n" + "at: " +
-                               * app.posInOccurrence().subTerm() + "\n" + "ifInsts: " +
-                               * app.ifInsts() + "\n" + "steps: " + steps;
-                               */
+        if (l_step == null) {
+            // The step this rule application was costed with (recorded by
+            // DependencyContractFeature at cost-computation time) is no longer part of the
+            // sequent: another rule application on this goal has rewritten it while the
+            // application waited in the rule-application queue. The rule application is
+            // stale. This is a legal state of the queue protocol -- the queue tracks only
+            // the find position, not the assumes positions, so it can happen with any
+            // prover: the multi-core prover reaches it regularly (the per-goal rule order
+            // varies with worker timing), a single-core search can reach it as well.
+            //
+            // Design decision: staleness is TOLERATED here, not prevented. Leaving the
+            // step unset keeps complete() false, so the caller discards the application
+            // and the next cost computation offers the rule again, with a step from the
+            // then-current sequent -- the same discard-and-recost channel every other
+            // stale queue entry uses (see BuiltInRuleAppContainer.completeRuleApp). The
+            // two preventive alternatives are deliberately not used: tracking the assumes
+            // positions with formula tags and refreshing eagerly would add queue machinery
+            // only to arrive at the same re-costing; and recomputing a step HERE, at
+            // completion time, would bypass the strategy's step policy (in particular
+            // removePreviouslyUsedSteps in DependencyContractFeature) and could re-apply
+            // the contract with a step the strategy deliberately excluded.
+            return this;
+        }
         return setStep(l_step);
     }
 
