@@ -1,0 +1,57 @@
+name: divassoc-probe
+on:
+  push:
+    branches: [ divassoc-probe ]
+  workflow_dispatch:
+
+jobs:
+  divergence-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Standalone divergence probe (divisionAssoc, 2w/4w x200)
+        run: ./gradlew --continue :key.core:test --tests 'de.uka.ilkd.key.prover.mt.DivergenceProbe' | grep -aE "DIVP|FAILED" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: divergence-probe-results
+          path: key.core/build/test-results/test/*.xml
+
+  mt2w-loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Loop the real testMt2w leg until failure (max 10)
+        run: |
+          set +e
+          fails=0
+          for i in $(seq 1 10); do
+            echo "=== testMt2w run $i ==="
+            ./gradlew :key.core:testMt2w --rerun-tasks
+            rc=$?
+            if [ $rc -ne 0 ]; then
+              fails=$((fails+1))
+              mkdir -p failed-results/run$i
+              cp -r key.core/build/test-results/testMt2w failed-results/run$i/ || true
+              [ $fails -ge 3 ] && break
+            fi
+          done
+          echo "=== LOOP SUMMARY: $fails failing runs ==="
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mt2w-loop-failures
+          path: failed-results/
+          if-no-files-found: ignore
