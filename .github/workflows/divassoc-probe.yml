@@ -16,7 +16,7 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
       - name: Standalone divergence probe (divisionAssoc, 2w/4w x200)
-        run: ./gradlew --continue :key.core:test --tests 'de.uka.ilkd.key.prover.mt.DivergenceProbe' | grep -aE "DIVP|FAILED" || true
+        run: ./gradlew --continue :key.core:test --tests 'de.uka.ilkd.key.prover.mt.DivergenceProbe' 2>&1 | grep -aE 'DIVP|BTDIV|FAILED' | head -60 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

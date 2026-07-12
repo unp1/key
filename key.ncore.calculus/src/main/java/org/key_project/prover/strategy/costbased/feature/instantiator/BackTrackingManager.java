@@ -159,7 +159,28 @@ public final class BackTrackingManager {
 
     private void assertValidTicket(Object ticket) {
         if (tickets.size() > position) {
-            assert tickets.get(position) == ticket;
+            Object expected = tickets.get(position);
+            if (expected != ticket) {
+                // DIAGNOSTIC (probe branch only): the feature re-evaluation reached a DIFFERENT
+                // choice point at this position than a previous evaluation -> non-deterministic
+                // feature evaluation. Dump who differs before failing.
+                StringBuilder seq = new StringBuilder();
+                for (int i = 0; i < tickets.size(); i++) {
+                    Object t = tickets.get(i);
+                    seq.append(i == position ? " *[" : " [").append(i).append("]")
+                        .append(t.getClass().getSimpleName()).append('@')
+                        .append(System.identityHashCode(t)).append(i == position ? "*" : "");
+                }
+                System.err.println("[BTDIV] position=" + position
+                    + " expected=" + expected.getClass().getName() + "@"
+                    + System.identityHashCode(expected)
+                    + " actual=" + ticket.getClass().getName() + "@"
+                    + System.identityHashCode(ticket)
+                    + " initialApp=" + (initialApp == null ? "null"
+                        : initialApp.rule().name())
+                    + " seq=" + seq);
+            }
+            assert expected == ticket;
         } else {
             assert tickets.size() == position;
             tickets.add(ticket);
