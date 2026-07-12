@@ -36,7 +36,7 @@ public class DivergenceProbe {
 
     private static final String PROOF = "standard_key/arith/divisionAssoc.key";
     private static final int[] WORKER_COUNTS = { 2, 4 };
-    private static final int REPS_PER_COUNT = 200;
+    private static final int REPS_PER_COUNT = 1500;
 
     private static String snap;
 
@@ -67,12 +67,24 @@ public class DivergenceProbe {
             + (baseline.isEmpty() ? "?" : baseline.get(0).subtreeDigest.substring(0, 12)));
 
         int diverged = 0;
+        int crashed = 0;
         int runs = 0;
         for (int w : WORKER_COUNTS) {
             for (int i = 0; i < REPS_PER_COUNT; i++) {
                 runs++;
                 final List<CanonNode> mt = new ArrayList<>();
-                final boolean closed = prove(f, true, w, mt);
+                final boolean closed;
+                try {
+                    closed = prove(f, true, w, mt);
+                } catch (Throwable t) {
+                    // A worker crashed this run (the BackTrackingManager determinism guard, dumped
+                    // as [BTDIV] to stderr). Record it and KEEP GOING so we sample many occurrences
+                    // and get a rate, instead of the first crash ending the whole batch.
+                    crashed++;
+                    System.out.println("DIVP | CRASH at " + w + "w#" + i + ": "
+                        + rootCause(t));
+                    continue;
+                }
                 final boolean sameTree = closed && scClosed && equalCanon(baseline, mt);
                 if (sameTree) {
                     continue;
@@ -81,15 +93,19 @@ public class DivergenceProbe {
                 System.out.println("DIVP | DIVERGENCE at " + w + "w#" + i + ": closed=" + closed
                     + " canonNodes=" + mt.size() + " (baseline " + baseline.size() + ")");
                 reportFirstDivergence(baseline, mt);
-                if (diverged >= 5) {
-                    System.out.println("DIVP | stopping after 5 divergences");
-                    System.out.println("DIVP | SUMMARY: " + diverged + "/" + runs + " diverged");
-                    return;
-                }
             }
         }
-        System.out.println("DIVP | SUMMARY: " + diverged + "/" + runs
-            + " runs diverged from the SC baseline (0 = not reproduced in this environment)");
+        System.out.println("DIVP | SUMMARY: " + diverged + " diverged, " + crashed
+            + " crashed / " + runs + " runs (0/0 = not reproduced in this environment)");
+    }
+
+    private static String rootCause(Throwable t) {
+        Throwable c = t;
+        while (c.getCause() != null) {
+            c = c.getCause();
+        }
+        StackTraceElement[] st = c.getStackTrace();
+        return c.getClass().getName() + (st.length > 0 ? " @ " + st[0] : "");
     }
 
     private static void reportFirstDivergence(List<CanonNode> base, List<CanonNode> mt) {
