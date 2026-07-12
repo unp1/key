@@ -34,9 +34,22 @@ import org.junit.jupiter.api.Test;
  */
 public class DivergenceProbe {
 
-    private static final String PROOF = "standard_key/arith/divisionAssoc.key";
-    private static final int[] WORKER_COUNTS = { 2, 4 };
-    private static final int REPS_PER_COUNT = 1500;
+    private static final String PROOF =
+        System.getProperty("probe.proof", "standard_key/arith/divisionAssoc.key");
+    // Tunable from the gradle task: -PprobeWorkers=4,8,12 and -PprobeReps=1200
+    private static final int[] WORKER_COUNTS = parseWorkers(
+        System.getProperty("probe.workers", "4,8,12"));
+    private static final int REPS_PER_COUNT =
+        Integer.getInteger("probe.reps", 1200);
+
+    private static int[] parseWorkers(String csv) {
+        String[] parts = csv.split(",");
+        int[] w = new int[parts.length];
+        for (int i = 0; i < parts.length; i++) {
+            w[i] = Integer.parseInt(parts[i].trim());
+        }
+        return w;
+    }
 
     private static String snap;
 
@@ -60,6 +73,8 @@ public class DivergenceProbe {
         Assumptions.assumeTrue(ex != null);
         final Path f = ex.resolve(PROOF);
 
+        System.out.println("DIVP | probe: proof=" + PROOF + " workers="
+            + java.util.Arrays.toString(WORKER_COUNTS) + " reps/worker=" + REPS_PER_COUNT);
         final List<CanonNode> baseline = new ArrayList<>();
         final boolean scClosed = prove(f, false, 0, baseline);
         System.out.println("DIVP | SC baseline: closed=" + scClosed + " canonNodes="

@@ -160,6 +160,37 @@ tasks.register('testMt2w', Test) {
     }
 }
 
+// DIAGNOSTIC task (probe branch only, do NOT merge): reproduce + localize the intermittent
+// divisionAssoc multi-core determinism crash (a worker AssertionError in the BackTrackingManager
+// determinism guard, which BackTrackingManager here dumps as a [BTDIV] line naming the diverging
+// choice point). It proves divisionAssoc.key single-core once as a baseline, then many times under
+// the multi-core prover, surviving each crash so it reports a RATE plus a [BTDIV] sample per crash.
+//
+// Run it:   ./gradlew :key.core:divergenceProbe
+// Tune it:  ./gradlew :key.core:divergenceProbe -PprobeWorkers=4,8,12 -PprobeReps=2000
+// The crash is low-rate and timing-sensitive, so a busy multi-core Linux box reproduces it best;
+// on an idle machine you may need many reps. Read the DIVP/BTDIV lines in the console output.
+tasks.register('divergenceProbe', Test) {
+    description = 'Diagnostic: reproduce and localize the divisionAssoc multi-core determinism crash'
+    group = 'verification'
+    // the BackTrackingManager determinism guard is an assert, so assertions MUST be on
+    enableAssertions = true
+    // one JVM, always re-run, no build cache
+    forkEvery = 0
+    maxParallelForks = 1
+    outputs.upToDateWhen { false }
+    filter { includeTestsMatching "de.uka.ilkd.key.prover.mt.DivergenceProbe" }
+    // show the DIVP / BTDIV lines live
+    testLogging { showStandardStreams = true }
+    // tunables (defaults live in DivergenceProbe): -PprobeWorkers=4,8,12  -PprobeReps=1200
+    if (project.hasProperty('probeWorkers')) {
+        systemProperty 'probe.workers', project.property('probeWorkers')
+    }
+    if (project.hasProperty('probeReps')) {
+        systemProperty 'probe.reps', project.property('probeReps')
+    }
+}
+
 // The 4-worker variant of testMt2w. Kept as its own task so CI can drop it if a runner cannot
 // sustain four over-subscribed workers (the 2-worker task is the must-pass one).
 tasks.register('testMt4w', Test) {
